@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Cordova plugin for Firebase Messaging",
   "cordova": {
-    "id": "cordova-plugin-firebase-messaging",
+    "id": "cordova-plugin-firebase-messaging-ka",
     "platforms": [
       "ios",
       "android"
