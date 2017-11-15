@@ -17,6 +17,17 @@
 
 @implementation FirebaseMessagingPlugin
 
+static FirebaseMessagingPlugin *firebaseMessagingPlugin;
+
++ (FirebaseMessagingPlugin *) firebaseMessagingPlugin {
+    return firebaseMessagingPlugin;
+}
+
+- (void)pluginInitialize {
+    NSLog(@"Starting FirebaseMessagingPlugin plugin");
+    firebaseMessagingPlugin = self;
+}
+
 - (void)requestPermission:(CDVInvokedUrlCommand *)command {
     self.registerCallbackId = command.callbackId;
     // Register for remote notifications. This shows a permission dialog on first run, to
@@ -62,6 +73,7 @@
 - (void)getToken:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         NSString* currentToken = [[FIRInstanceID instanceID] token];
+
         CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:currentToken];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     }];
@@ -112,27 +124,31 @@
 - (void)onBackgroundMessage:(CDVInvokedUrlCommand *)command {
     self.backgroundNotificationCallbackId = command.callbackId;
 
-    if (self.lastNotification) {
-        [self sendBackgroundNotification:self.lastNotification];
+    if (self.savedNotification) {
+        [self sendBackgroundNotification:self.savedNotification];
 
-        self.lastNotification = nil;
+        self.savedNotification = nil;
     }
 }
 
 - (void)onTokenRefresh:(CDVInvokedUrlCommand *)command {
     self.tokenRefreshCallbackId = command.callbackId;
+
+    if (self.savedToken) {
+        [self refreshToken:self.savedToken];
+
+        self.savedToken = nil;
+    }
 }
 
-- (void)registerNotifications:(NSError *)error {
+- (void)registerNotifications:(NSString *)token {
     if (self.registerCallbackId) {
         CDVPluginResult *pluginResult;
 
-        if (error) {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error.localizedDescription];
+        if (token) {
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:token];
         } else {
-            NSData* deviceToken = [FIRMessaging messaging].APNSToken;
-
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArrayBuffer:deviceToken];
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"registerNotifications failed"];
         }
 
         [self.commandDelegate sendPluginResult:pluginResult callbackId:self.registerCallbackId];
@@ -153,14 +169,16 @@
         [pluginResult setKeepCallbackAsBool:YES];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:self.backgroundNotificationCallbackId];
     } else {
-        self.lastNotification = userInfo;
+        self.savedNotification = userInfo;
     }
 }
 
 - (void)refreshToken:(NSString *)token {
-    if (self.tokenRefreshCallbackId != nil) {
-        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+    if (self.tokenRefreshCallbackId) {
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:token];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:self.tokenRefreshCallbackId];
+    } else {
+        self.savedToken = token;
     }
 }
 

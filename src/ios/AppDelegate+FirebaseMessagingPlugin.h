@@ -6,4 +6,6 @@
 
 - (void)postNotification:(NSDictionary*) userInfo background:(BOOL) value;
 
+@property (nonatomic, retain) NSDictionary* savedNotification;
+
 @end

@@ -2,13 +2,15 @@
 #import "FirebaseMessagingPlugin.h"
 #import <objc/runtime.h>
 
+static char savedNotificationKey;
+
 #if defined(__IPHONE_10_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_10_0
 @import UserNotifications;
 
 // Implement UNUserNotificationCenterDelegate to receive display notification via APNS for devices
 // running iOS 10 and above. Implement FIRMessagingDelegate to receive data message via FCM for
 // devices running iOS 10 and above.
-@interface AppDelegate (FirebaseMessagingPlugin) <UNUserNotificationCenterDelegate>
+@interface AppDelegate () <UNUserNotificationCenterDelegate, FIRMessagingDelegate>
 @end
 #endif
 
@@ -17,17 +19,25 @@
 @implementation AppDelegate (FirebaseMessagingPlugin)
 
 - (void)postNotification:(NSDictionary*)userInfo background:(BOOL)background {
-    // Print full message.
-    NSLog(@"%@", userInfo);
 
     NSDictionary *mutableUserInfo = [userInfo mutableCopy];
-    // [mutableUserInfo setValue:userInfo[@"aps"] forKey:@"notification"];
 
-    FirebaseMessagingPlugin* fmPlugin = [self.viewController getCommandInstance:@"FirebaseMessaging"];
+    NSLog(@"FirebaseMessagingDelegate postNotification %@", mutableUserInfo);
+
     if (background) {
-        [fmPlugin sendBackgroundNotification:mutableUserInfo];
+
+        if( FirebaseMessagingPlugin.firebaseMessagingPlugin )
+        {
+            [FirebaseMessagingPlugin.firebaseMessagingPlugin sendBackgroundNotification:mutableUserInfo];
+        }
+        else
+        {
+            NSLog(@"FirebaseMessagingDelegate saving notification");
+            self.savedNotification = mutableUserInfo;
+        }
+
     } else {
-        [fmPlugin sendNotification:mutableUserInfo];
+        [FirebaseMessagingPlugin.firebaseMessagingPlugin sendNotification:mutableUserInfo];
     }
 }
 
@@ -35,6 +45,14 @@
     Method original = class_getInstanceMethod(self, @selector(application:didFinishLaunchingWithOptions:));
     Method swizzled = class_getInstanceMethod(self, @selector(application:swizzledDidFinishLaunchingWithOptions:));
     method_exchangeImplementations(original, swizzled);
+}
+
+- (void)applicationDidBecomeActive:(NSNotification *)notification {
+
+    if( self.savedNotification )
+    {
+        [self postNotification:self.savedNotification background:YES];
+    }
 }
 
 - (BOOL)application:(UIApplication *)application swizzledDidFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
@@ -100,11 +118,9 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     // Note that this callback will be fired everytime a new token is generated, including the first
     // time. So if you need to retrieve the token as soon as it is available this is where that
     // should be done.
-    NSLog(@"FCM registration token: %@", fcmToken);
+    NSLog(@"FirebaseMessagingDelegate refreshed token: %@", fcmToken);
 
-    FirebaseMessagingPlugin* fmPlugin = [self.viewController getCommandInstance:@"FirebaseMessaging"];
-
-    [fmPlugin refreshToken:fcmToken];
+    [FirebaseMessagingPlugin.firebaseMessagingPlugin refreshToken:fcmToken];
 }
 // [END refresh_token]
 
@@ -114,24 +130,51 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 - (void)messaging:(FIRMessaging *)messaging didReceiveMessage:(FIRMessagingRemoteMessage *)remoteMessage {
     NSDictionary *userInfo = remoteMessage.appData;
 
-    NSLog(@"Received data message: %@", userInfo);
+    NSLog(@"FirebaseMessagingDelegate Received data message: %@", userInfo);
 
-    FirebaseMessagingPlugin* fmPlugin = [self.viewController getCommandInstance:@"FirebaseMessaging"];
-
-    [fmPlugin sendNotification:userInfo];
+    [FirebaseMessagingPlugin.firebaseMessagingPlugin sendNotification:userInfo];
 }
 // [END ios_10_data_message]
 
+/*
 - (void)application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error {
     FirebaseMessagingPlugin* fmPlugin = [self.viewController getCommandInstance:@"FirebaseMessaging"];
 
-    [fmPlugin registerNotifications:error];
+    [fmPlugin registerNotifications:nil];
 }
 
-- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSString *)deviceToken {
     FirebaseMessagingPlugin* fmPlugin = [self.viewController getCommandInstance:@"FirebaseMessaging"];
 
-    [fmPlugin registerNotifications:nil];
+    [fmPlugin registerNotifications:deviceToken];
+}
+*/
+
+// [START register_token]
+- (void)messaging:(FIRMessaging *)messaging didReceiveRegistrationToken:(NSString *)fcmToken {
+    // Note that this callback will be fired everytime a new token is generated, including the first
+    // time. So if you need to retrieve the token as soon as it is available this is where that
+    // should be done.
+    NSLog(@"FirebaseMessagingDelegate registration token: %@", fcmToken);
+
+    [FirebaseMessagingPlugin.firebaseMessagingPlugin registerNotifications:fcmToken];
+}
+// [END register_token]
+
+
+- (NSMutableArray *)savedNotification
+{
+    return objc_getAssociatedObject(self, &savedNotificationKey);
+}
+
+- (void)setSavedNotification:(NSDictionary *)aDictionary
+{
+    objc_setAssociatedObject(self, &savedNotificationKey, aDictionary, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (void)dealloc
+{
+    self.savedNotification = nil;
 }
 
 @end
