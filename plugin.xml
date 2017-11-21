@@ -1,7 +1,7 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
 xmlns:android="http://schemas.android.com/apk/res/android"
            id="cordova-plugin-firebase-messaging-ka"
-      version="1.0.2">
+      version="1.0.3">
 
     <name>FirebaseMessagingPlugin</name>
     <description>Cordova plugin for Firebase Cloud Messaging</description>
@@ -67,6 +67,7 @@ xmlns:android="http://schemas.android.com/apk/res/android"
                     <action android:name="com.google.firebase.INSTANCE_ID_EVENT"/>
                 </intent-filter>
             </service>
+            <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/notif_icon" />
         </config-file>
 
         <dependency id="cordova-support-google-services" version="~1.0.0"/>
