@@ -41,10 +41,29 @@ static char savedNotificationKey;
     }
 }
 
-+ (void)load {
-    Method original = class_getInstanceMethod(self, @selector(application:didFinishLaunchingWithOptions:));
-    Method swizzled = class_getInstanceMethod(self, @selector(application:swizzledDidFinishLaunchingWithOptions:));
-    method_exchangeImplementations(original, swizzled);
++ (void)load
+{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        Method original, swizzled;
+
+        original = class_getInstanceMethod(self, @selector(application:didFinishLaunchingWithOptions:));
+        swizzled = class_getInstanceMethod(self, @selector(firebaseMessagingPlugin:didFinishLaunchingWithOptions:));
+        method_exchangeImplementations(original, swizzled);
+    });
+}
+
+-(BOOL)firebaseMessagingPlugin:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions {
+
+    [FIRMessaging messaging].delegate = self;
+
+    NSDictionary *userInfo = launchOptions[UIApplicationLaunchOptionsRemoteNotificationKey];
+
+    if (userInfo) {
+        [self postNotification:userInfo background:YES];
+    }
+
+    return [self firebaseMessagingPlugin:application didFinishLaunchingWithOptions:launchOptions];
 }
 
 - (void)applicationDidBecomeActive:(NSNotification *)notification {
@@ -53,20 +72,6 @@ static char savedNotificationKey;
     {
         [self postNotification:self.savedNotification background:YES];
     }
-}
-
-- (BOOL)application:(UIApplication *)application swizzledDidFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-    // [START set_messaging_delegate]
-    [FIRMessaging messaging].delegate = self;
-    // [END set_messaging_delegate]
-
-    NSDictionary *userInfo = launchOptions[UIApplicationLaunchOptionsRemoteNotificationKey];
-
-    if (userInfo) {
-        [self postNotification:userInfo background:YES];
-    }
-
-    return [self application:application swizzledDidFinishLaunchingWithOptions:launchOptions];
 }
 
 // [START receive_message]
