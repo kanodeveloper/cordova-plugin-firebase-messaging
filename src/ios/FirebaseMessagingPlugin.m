@@ -2,7 +2,7 @@
 #import <Cordova/CDV.h>
 #import "AppDelegate.h"
 
-@import FirebaseInstanceID;
+//@import FirebaseInstanceID;
 @import Firebase;
 @import FirebaseAnalytics;
 
