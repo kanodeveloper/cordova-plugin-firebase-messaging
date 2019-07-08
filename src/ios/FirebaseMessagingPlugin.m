@@ -72,7 +72,7 @@ static FirebaseMessagingPlugin *firebaseMessagingPlugin;
 
 - (void)getToken:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
-        NSString* currentToken = [[FIRInstanceID instanceID] token];
+        NSString* currentToken = [FIRMessaging messaging].FCMToken;
 
         CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:currentToken];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
