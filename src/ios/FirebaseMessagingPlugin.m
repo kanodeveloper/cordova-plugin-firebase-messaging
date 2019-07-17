@@ -82,12 +82,12 @@ static FirebaseMessagingPlugin *firebaseMessagingPlugin;
 - (void)setBadge:(CDVInvokedUrlCommand *)command {
     int number = [[command.arguments objectAtIndex:0] intValue];
 
-    [self.commandDelegate runInBackground:^{
+    dispatch_async(dispatch_get_main_queue(), ^{
         [[UIApplication sharedApplication] setApplicationIconBadgeNumber:number];
 
         CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-    }];
+    });
 }
 
 - (void)getBadge:(CDVInvokedUrlCommand *)command {
